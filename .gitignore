@@ -1,3 +1,6 @@
+# Don't check in local scan configs.
+./scan.json
+
 logs/
 scans/
 src/__pycache__/
