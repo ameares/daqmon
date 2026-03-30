@@ -32,7 +32,7 @@ jobs:
         run: uv build
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.6.1
         with:
           generate_release_notes: true    # auto-generates from commit messages
           files: dist/*                   # attaches the wheel + sdist
