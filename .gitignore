@@ -1,5 +1,6 @@
 # Don't check in local scan configs.
 scan.json
+CLAUDE.md
 
 logs/
 scans/
