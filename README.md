@@ -4,20 +4,61 @@ A Python CLI tool for configuring, scanning, and logging data from the
 HP/Agilent 34970A Data Acquisition / Switch Unit via serial (RS-232).
 Readings are logged to the console and written to InfluxDB v2.
 
+## Installation
+
+**pip:**
+```bash
+pip install daqmon
+```
+
+**uv** (installs into the current project or virtual environment):
+```bash
+uv add daqmon
+```
+
+**uvx** (run without installing — useful for one-off use):
+```bash
+uvx daqmon identify
+```
+
 ## Quick start
 
 ```bash
-# Install with uv
-uv sync
+# Create the default config file at ~/.config/daqmon/config.json
+daqmon init
+
+# Edit the config to set your serial port and InfluxDB connection
+nano ~/.config/daqmon/config.json
+
+# Scaffold a scan definition at ./scan.json
+daqmon init-scan
 
 # Identify the instrument
-uv run daqmon -c config.json identify
+daqmon identify
 
 # Run a scan (Ctrl-C to stop)
-uv run daqmon -c config.json scan myscan.json
+daqmon scan myscan.json
 
 # Download the current instrument configuration
-uv run daqmon -c config.json backup -o backup.json
+daqmon backup -o backup.json
+```
+
+## Development
+
+```bash
+# Clone and install in editable mode with dev dependencies
+git clone https://github.com/YOUR_USERNAME/daqmon
+cd daqmon
+uv sync
+
+# Run the CLI from source
+uv run daqmon identify
+
+# Lint, format, type-check, test
+uv run ruff check src/
+uv run ruff format src/
+uv run mypy src/
+uv run pytest tests/
 ```
 
 ## Files

@@ -4,13 +4,34 @@ version = "1.0.0"
 description = "Connect your HP 34970A to InfluxDB and monitor your data acquisition in real-time."
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
 authors = [
     { name = "Andrew Meares", email = "mearesinfo@gmail.com" }
+]
+keywords = ["hp34970a", "daq", "data-acquisition", "scpi", "influxdb", "serial", "instrument"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
 ]
 dependencies = [
     "pyserial>=3.5",
     "influxdb-client>=1.38.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ameares/daqmon"   # TODO: replace with your GitHub URL
+Source   = "https://github.com/ameares/daqmon"   # TODO: replace with your GitHub URL
+"Bug Tracker" = "https://github.com/ameares/daqmon/issues"  # TODO: replace
 
 [project.scripts]
 daqmon = "daqmon.cli:main"
@@ -21,7 +42,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/daqmon"]
-include = ["src/daqmon/config_example.json"]
+include = [
+    "src/daqmon/config_example.json",
+    "src/daqmon/scan_example.json",
+]
 
 [dependency-groups]
 dev = [
