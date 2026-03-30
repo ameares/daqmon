@@ -1,0 +1,17 @@
+{
+  "serial": {
+    "port": "/dev/ttyUSB0",
+    "baudrate": 115200,
+    "timeout": 10.0
+  },
+  "influxdb": {
+    "enabled": true,
+    "url": "http://127.0.0.1:8086",
+    "token": "mytoken",
+    "org": "myorg",
+    "bucket": "daqmon",
+    "measurement": "hp34970a",
+    "queue_maxsize": 1000,
+    "retry_max_delay": 60.0
+  }
+}
