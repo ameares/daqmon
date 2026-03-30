@@ -2,7 +2,7 @@
 
 A Python CLI tool for configuring, scanning, and logging data from the
 HP/Agilent 34970A Data Acquisition / Switch Unit via serial (RS-232).
-Readings are logged to the console and written to InfluxDB v2.
+Readings are logged to the CSV and written to InfluxDB v2.
 
 ## Installation
 
