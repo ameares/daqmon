@@ -1,5 +1,10 @@
 # daqmon – HP 34970A Data Acquisition Monitor
 
+[![CI](https://github.com/ameares/daqmon/actions/workflows/ci.yml/badge.svg)](https://github.com/ameares/daqmon/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/daqmon)](https://pypi.org/project/daqmon/)
+[![Python versions](https://img.shields.io/pypi/pyversions/daqmon)](https://pypi.org/project/daqmon/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ameares/daqmon/blob/main/LICENSE)
+
 A Python CLI tool for configuring, scanning, and logging data from the
 HP/Agilent 34970A Data Acquisition / Switch Unit via serial (RS-232).
 Readings are logged to the CSV and written to InfluxDB v2.
@@ -47,7 +52,7 @@ daqmon backup -o backup.json
 
 ```bash
 # Clone and install in editable mode with dev dependencies
-git clone https://github.com/YOUR_USERNAME/daqmon
+git clone https://github.com/ameares/daqmon
 cd daqmon
 uv sync
 
