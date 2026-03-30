@@ -1,6 +1,6 @@
 [project]
 name = "daqmon"
-version = "1.0.0"
+version = "0.1.0"
 description = "Connect your HP 34970A to InfluxDB and monitor your data acquisition in real-time."
 readme = "README.md"
 requires-python = ">=3.10"
