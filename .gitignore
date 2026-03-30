@@ -2,4 +2,5 @@ logs/
 scans/
 src/__pycache__/
 src/daqmon/__pycache__/
+.venv/
 
