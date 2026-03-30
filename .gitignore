@@ -1,7 +1,7 @@
 # Don't check in local scan configs.
 scan.json
 CLAUDE.md
-
+dist/
 logs/
 scans/
 src/__pycache__/
