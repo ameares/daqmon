@@ -1,0 +1,153 @@
+{
+  "description": "Example scan: two-card setup demonstrating all channel configuration options",
+  "scan_interval": 5.0,
+  "scan_count": 0,
+  "ambient_correction": true,
+  "ambient_channel": 201,
+  "channels": [
+    {
+      "channel": 101,
+      "name": "supply_rail_5v",
+      "function": "dc_voltage",
+      "range": "10",
+      "nplc": 10.0,
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 102,
+      "name": "ac_line_voltage",
+      "function": "ac_voltage",
+      "range": "300",
+      "ac_bandwidth": 20.0,
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 103,
+      "name": "load_current_ma",
+      "function": "dc_current",
+      "range": "0.1",
+      "nplc": 1.0,
+      "gain": 1000.0,
+      "offset": 0.0,
+      "unit": "mA"
+    },
+    {
+      "channel": 104,
+      "name": "sense_resistor_ohm",
+      "function": "resistance_2w",
+      "range": "1000",
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 105,
+      "name": "precision_resistor_ohm",
+      "function": "resistance_4w",
+      "range": "auto",
+      "nplc": 10.0,
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 106,
+      "name": "thermocouple_k_internal_ref",
+      "function": "temperature",
+      "tc_type": "K",
+      "ref_junction": "internal",
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0,
+      "unit": "C"
+    },
+    {
+      "channel": 107,
+      "name": "thermocouple_t_external_ref",
+      "function": "temperature",
+      "tc_type": "T",
+      "ref_junction": "external",
+      "ref_channel": 201,
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0,
+      "unit": "C"
+    },
+    {
+      "channel": 108,
+      "name": "thermocouple_j_fixed_ref",
+      "function": "temperature",
+      "tc_type": "J",
+      "ref_junction": "fixed",
+      "ref_fixed_temp": 23.0,
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0,
+      "unit": "C"
+    },
+    {
+      "channel": 109,
+      "name": "signal_frequency_hz",
+      "function": "frequency",
+      "range": "auto",
+      "gain": 1.0,
+      "offset": 0.0,
+      "delay": 0.5
+    },
+    {
+      "channel": 110,
+      "name": "pulse_period_s",
+      "function": "period",
+      "range": "auto",
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 201,
+      "name": "ambient_temp",
+      "function": "temperature",
+      "tc_type": "K",
+      "ref_junction": "internal",
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0,
+      "unit": "C"
+    },
+    {
+      "channel": 202,
+      "name": "heatsink_temp",
+      "function": "temperature",
+      "tc_type": "K",
+      "ref_junction": "internal",
+      "nplc": 1.0,
+      "gain": 1.0,
+      "offset": 0.0,
+      "unit": "C"
+    },
+    {
+      "channel": 203,
+      "name": "scaled_voltage_with_offset",
+      "function": "dc_voltage",
+      "range": "auto",
+      "nplc": 1.0,
+      "gain": 11.0,
+      "offset": -0.05,
+      "unit": "V"
+    },
+    {
+      "channel": 204,
+      "name": "digital_input_bank",
+      "function": "digital_input",
+      "gain": 1.0,
+      "offset": 0.0
+    },
+    {
+      "channel": 205,
+      "name": "event_totalizer",
+      "function": "totalizer",
+      "gain": 1.0,
+      "offset": 0.0
+    }
+  ]
+}
