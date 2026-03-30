@@ -1,5 +1,5 @@
 # Don't check in local scan configs.
-./scan.json
+scan.json
 
 logs/
 scans/
