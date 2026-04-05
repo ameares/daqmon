@@ -6,5 +6,6 @@ logs/
 scans/
 src/__pycache__/
 src/daqmon/__pycache__/
+tests/__pycache__/
 .venv/
 
