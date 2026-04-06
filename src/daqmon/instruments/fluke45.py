@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Canonical function name -> Fluke 45 FUNC1 keyword
+# Canonical function name -> Fluke 45 function-select mnemonic
 FUNC_MAP = {
     "dc_voltage":    "VDC",
     "ac_voltage":    "VAC",
@@ -80,9 +80,13 @@ class Fluke45(InstrumentBase):
             rtscts=False,
             dsrdtr=False,
         )
+        # Send device clear (RS-232 ^C = IEEE-488 DCL) to abort any pending
+        # operation and get into a known state, then drain whatever the meter
+        # echoes back (prompt, partial response, etc.).
+        self._ser.write(b"\x03")
+        time.sleep(0.2)
         self._ser.reset_input_buffer()
         self._ser.reset_output_buffer()
-        time.sleep(0.2)
 
     def close(self) -> None:
         if self._ser and self._ser.is_open:
@@ -103,6 +107,12 @@ class Fluke45(InstrumentBase):
 
         self._raw_write("*RST")
         time.sleep(1.0)
+        # *RST may echo or emit a prompt; discard before issuing further commands.
+        self._ser.reset_input_buffer()
+
+        # Ensure numeric-only output (Format 1). Format 2 appends unit strings
+        # like "VDC" which would break float() parsing of MEAS1? responses.
+        self._raw_write("FORMAT 1")
 
         func = FUNC_MAP.get(ch.function.lower())
         if func is None:
@@ -110,10 +120,16 @@ class Fluke45(InstrumentBase):
                 f"Unsupported function for Fluke 45: {ch.function!r}. "
                 f"Supported: {', '.join(FUNC_MAP)}"
             )
-        self._raw_write(f"FUNC1 {func}")
+        # Function is selected by sending its mnemonic directly (e.g. "VDC"),
+        # not via a "FUNC1 <mnemonic>" prefix command.
+        self._raw_write(func)
 
-        range_cmd = "AUTO" if ch.range == "auto" else ch.range
-        self._raw_write(f"RANGE1 {range_cmd}")
+        # Range: "AUTO" command enters autoranging; "RANGE <n>" sets a fixed
+        # integer range (1–7).  RANGE1 is a query-only keyword, not a setter.
+        if ch.range == "auto":
+            self._raw_write("AUTO")
+        else:
+            self._raw_write(f"RANGE {ch.range}")
 
         rate_key = ch.extra.get("rate", "medium")
         rate_cmd = RATE_MAP.get(rate_key, "M")
@@ -121,7 +137,7 @@ class Fluke45(InstrumentBase):
 
         logger.info(
             "Fluke 45 configured: ch %d (%s) func=%s range=%s rate=%s",
-            ch.channel, ch.name, func, range_cmd, rate_cmd,
+            ch.channel, ch.name, func, ch.range, rate_cmd,
         )
 
     def start(self) -> None:
@@ -162,6 +178,8 @@ class Fluke45(InstrumentBase):
 
     def query(self, cmd: str) -> str:
         self._raw_write(cmd)
+        if not self._ser or not self._ser.is_open:
+            raise RuntimeError("Serial port not open")
         resp = self._ser.readline().decode("ascii", errors="replace").strip()
         logger.debug("RX <<< %s", resp)
         return resp
