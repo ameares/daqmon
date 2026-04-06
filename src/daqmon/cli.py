@@ -16,7 +16,8 @@ from .backup import download_config
 from .config import ScanConfig
 from .csv_writer import CsvWriter
 from .influx import InfluxWriter
-from .instrument import HP34970A
+from .instruments import make_instrument as _make_instrument
+from .instruments.base import InstrumentBase
 from .scanner import run_scan
 
 logger = logging.getLogger("daqmon")
@@ -33,11 +34,19 @@ def load_app_config(path: str) -> dict:
         return json.load(f)
 
 
-def make_instrument(cfg: dict) -> HP34970A:
-    ser = cfg.get("serial", {})
-    return HP34970A(
+_DEFAULT_BAUD: dict[str, int] = {
+    "hp34970a": 115200,
+    "fluke45": 9600,
+}
+
+
+def make_instrument(app_cfg: dict, instrument_type: str) -> InstrumentBase:
+    ser = app_cfg.get("serial", {})
+    default_baud = _DEFAULT_BAUD.get(instrument_type.lower(), 9600)
+    return _make_instrument(
+        instrument_type=instrument_type,
         port=ser.get("port", "/dev/ttyUSB0"),
-        baudrate=ser.get("baudrate", 9600),
+        baudrate=ser.get("baudrate", default_baud),
         timeout=ser.get("timeout", 10.0),
     )
 
@@ -110,8 +119,16 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--output", default="backup.json",
         help="Output file path. Default: %(default)s",
     )
+    backup_p.add_argument(
+        "--instrument", default="hp34970a",
+        help="Instrument type. Default: %(default)s",
+    )
 
-    sub.add_parser("identify", help="Query instrument *IDN? and print it")
+    identify_p = sub.add_parser("identify", help="Query instrument *IDN? and print it")
+    identify_p.add_argument(
+        "--instrument", default="hp34970a",
+        help="Instrument type. Default: %(default)s",
+    )
 
     init_p = sub.add_parser("init", help="Create default config at ~/.config/daqmon/config.json")
     init_p.add_argument(
@@ -124,6 +141,10 @@ def build_parser() -> argparse.ArgumentParser:
     init_scan_p.add_argument(
         "--output", default="scan.json", metavar="FILE",
         help="Destination path for the scan config. Default: %(default)s",
+    )
+    init_scan_p.add_argument(
+        "--instrument", default="hp34970a",
+        help="Instrument type to scaffold (e.g. hp34970a, fluke45, random). Default: %(default)s",
     )
     init_scan_p.add_argument(
         "--force",
@@ -150,7 +171,14 @@ def cmd_init(dest: Path, force: bool) -> None:
     print(f"Edit it before running:  nano {dest}")
 
 
-def cmd_init_scan(dest: Path, force: bool) -> None:
+_SCAN_EXAMPLE_FILES: dict[str, str] = {
+    "hp34970a": "scan_example.json",
+    "fluke45": "scan_fluke45_example.json",
+    "random": "scan_random_example.json",
+}
+
+
+def cmd_init_scan(dest: Path, force: bool, instrument_type: str = "hp34970a") -> None:
     if dest.exists() and not force:
         print(f"Scan config already exists: {dest}")
         print("Edit it directly, or re-run with --force to overwrite.")
@@ -158,8 +186,27 @@ def cmd_init_scan(dest: Path, force: bool) -> None:
 
     dest.parent.mkdir(parents=True, exist_ok=True)
 
+    key = instrument_type.lower()
+    example_file = _SCAN_EXAMPLE_FILES.get(key)
+
     pkg = importlib.resources.files("daqmon")
-    example = pkg.joinpath("scan_example.json").read_text(encoding="utf-8")
+    if example_file is not None:
+        example = pkg.joinpath(example_file).read_text(encoding="utf-8")
+    else:
+        # Generic minimal template for instrument types without a dedicated example
+        example = json.dumps(
+            {
+                "instrument_type": key,
+                "description": f"{key} scan config",
+                "scan_interval": 10.0,
+                "scan_count": 0,
+                "channels": [
+                    {"channel": 1, "name": "channel_1", "gain": 1.0, "offset": 0.0}
+                ],
+            },
+            indent=2,
+        ) + "\n"
+
     dest.write_text(example, encoding="utf-8")
 
     print(f"Scan config written to: {dest}")
@@ -182,7 +229,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     if args.command == "init-scan":
-        cmd_init_scan(dest=Path(args.output), force=args.force)
+        cmd_init_scan(dest=Path(args.output), force=args.force, instrument_type=args.instrument)
         return
 
     app_cfg = load_app_config(args.config)
@@ -191,8 +238,27 @@ def main(argv: list[str] | None = None) -> None:
         logger.debug("Overriding influxdb.bucket with CLI value: %s", args.bucket)
         app_cfg.setdefault("influxdb", {})["bucket"] = args.bucket
 
-    inst = make_instrument(app_cfg)
     influx = make_influx(app_cfg)
+
+    # Determine instrument type:
+    # - scan/run: read from the scan config file (instrument_type field)
+    # - identify/backup: read from --instrument CLI flag
+    if args.command in ("scan", "run"):
+        scan_file = args.scan_file if args.command == "scan" else args.scan
+        scan_cfg = ScanConfig.load(scan_file)
+        instrument_type = scan_cfg.instrument_type
+        logger.info(
+            "Loaded scan config: %s (%d channels, interval=%.1fs, instrument=%s)",
+            scan_file,
+            len(scan_cfg.channels),
+            scan_cfg.scan_interval,
+            instrument_type,
+        )
+    else:
+        scan_cfg = None
+        instrument_type = getattr(args, "instrument", "hp34970a")
+
+    inst = make_instrument(app_cfg, instrument_type)
 
     stop_event = threading.Event()
 
@@ -214,15 +280,6 @@ def main(argv: list[str] | None = None) -> None:
             print(f"Configuration saved to {args.output}")
 
         elif args.command in ("scan", "run"):
-            scan_file = args.scan_file if args.command == "scan" else args.scan
-            scan_cfg = ScanConfig.load(scan_file)
-            logger.info(
-                "Loaded scan config: %s (%d channels, interval=%.1fs)",
-                scan_file,
-                len(scan_cfg.channels),
-                scan_cfg.scan_interval,
-            )
-
             influx.open()
 
             bucket = app_cfg.get("influxdb", {}).get("bucket", "daqmon")

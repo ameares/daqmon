@@ -1,0 +1,33 @@
+{
+  "instrument_type": "random",
+  "description": "RandomInstrument demo – no hardware required",
+  "scan_interval": 2.0,
+  "scan_count": 0,
+  "channels": [
+    {
+      "channel": 1,
+      "name": "signal_a",
+      "unit": "V",
+      "gain": 1.0,
+      "offset": 0.0,
+      "extra": {"mean": 5.0, "std": 0.05}
+    },
+    {
+      "channel": 2,
+      "name": "signal_b",
+      "unit": "mA",
+      "gain": 1.0,
+      "offset": 0.0,
+      "extra": {"mean": 100.0, "std": 2.0}
+    },
+    {
+      "channel": 3,
+      "name": "temperature",
+      "function": "temperature",
+      "unit": "C",
+      "gain": 1.0,
+      "offset": 0.0,
+      "extra": {"mean": 25.0, "std": 0.5}
+    }
+  ]
+}

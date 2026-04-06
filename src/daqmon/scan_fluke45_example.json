@@ -1,0 +1,18 @@
+{
+  "instrument_type": "fluke45",
+  "description": "Fluke 45 DC voltage monitor",
+  "scan_interval": 10.0,
+  "scan_count": 0,
+  "channels": [
+    {
+      "channel": 1,
+      "name": "output_voltage",
+      "function": "dc_voltage",
+      "range": "auto",
+      "unit": "V",
+      "gain": 1.0,
+      "offset": 0.0,
+      "extra": {"rate": "medium"}
+    }
+  ]
+}

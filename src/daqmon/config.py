@@ -50,6 +50,7 @@ class ChannelConfig:
     delay: Optional[float] = None
     ac_bandwidth: Optional[float] = None
     ref_fixed_temp: Optional[float] = None
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict, only including fields relevant to the function."""
@@ -78,6 +79,8 @@ class ChannelConfig:
         d["offset"] = self.offset
         if self.delay is not None:
             d["delay"] = self.delay
+        if self.extra:
+            d["extra"] = self.extra
         return d
 
     @classmethod
@@ -97,6 +100,7 @@ class ChannelConfig:
             delay=float(d["delay"]) if "delay" in d else None,
             ac_bandwidth=float(d["ac_bandwidth"]) if "ac_bandwidth" in d else None,
             ref_fixed_temp=float(d["ref_fixed_temp"]) if "ref_fixed_temp" in d else None,
+            extra=dict(d.get("extra", {})),
         )
 
 
@@ -110,6 +114,7 @@ class ScanConfig:
     description: str = ""                # optional description
     ambient_correction: bool = False     # if True, compute _rise channels
     ambient_channel: Optional[int] = None  # channel number used as ambient reference
+    instrument_type: str = "hp34970a"   # selects the instrument driver
 
     @property
     def channel_numbers(self) -> list[int]:
@@ -130,6 +135,7 @@ class ScanConfig:
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
+            "instrument_type": self.instrument_type,
             "description": self.description,
             "scan_interval": self.scan_interval,
             "scan_count": self.scan_count,
@@ -157,6 +163,7 @@ class ScanConfig:
             description=str(d.get("description", "")),
             ambient_correction=ambient_correction,
             ambient_channel=int(ambient_channel) if ambient_channel is not None else None,
+            instrument_type=str(d.get("instrument_type", "hp34970a")),
         )
 
     def save(self, path: str | Path) -> None:

@@ -1,4 +1,4 @@
-"""Core scanning engine – configures the 34970A and runs the scan loop."""
+"""Core scanning engine – instrument-agnostic scan loop."""
 
 from __future__ import annotations
 
@@ -7,82 +7,12 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from .config import ChannelConfig, ScanConfig
+from .config import ScanConfig
 from .csv_writer import CsvWriter
 from .influx import InfluxWriter
-from .instrument import HP34970A
+from .instruments.base import InstrumentBase
 
 logger = logging.getLogger(__name__)
-
-
-def configure_channel(inst: HP34970A, ch: ChannelConfig) -> None:
-    """Apply a single channel's measurement configuration to the instrument."""
-    chans = [ch.channel]
-    func = ch.function.lower()
-
-    if func == "dc_voltage":
-        inst.configure_dc_voltage(chans, range_val=ch.range, nplc=ch.nplc)
-    elif func == "ac_voltage":
-        inst.configure_ac_voltage(chans, range_val=ch.range, ac_bandwidth=ch.ac_bandwidth)
-    elif func == "dc_current":
-        inst.configure_dc_current(chans, range_val=ch.range, nplc=ch.nplc)
-    elif func == "ac_current":
-        inst.configure_ac_current(chans, range_val=ch.range, ac_bandwidth=ch.ac_bandwidth)
-    elif func == "resistance_2w":
-        inst.configure_resistance_2w(chans, range_val=ch.range, nplc=ch.nplc)
-    elif func == "resistance_4w":
-        inst.configure_resistance_4w(chans, range_val=ch.range, nplc=ch.nplc)
-    elif func == "frequency":
-        inst.configure_frequency(chans, range_val=ch.range)
-    elif func == "period":
-        inst.configure_period(chans, range_val=ch.range)
-    elif func in ("temperature", "thermocouple"):
-        inst.configure_thermocouple(
-            chans,
-            tc_type=ch.tc_type,
-            ref_junction=ch.ref_junction,
-            ref_channel=ch.ref_channel,
-            ref_fixed_temp=ch.ref_fixed_temp,
-            nplc=ch.nplc,
-        )
-    elif func == "digital_input":
-        inst.configure_digital_input(chans)
-    elif func == "totalize":
-        inst.configure_totalizer(chans)
-    else:
-        logger.warning("Unknown function '%s' for channel %d – skipping", func, ch.channel)
-        return
-    
-    # Apply per-channel relay delay if specified
-    if ch.delay is not None:
-        inst.set_channel_delay(ch.channel, ch.delay)
-
-    logger.info(
-        "Configured ch %d (%s) as %s range=%s nplc=%.1f",
-        ch.channel, ch.name, func, ch.range, ch.nplc,
-    )
-
-
-def configure_scan(inst: HP34970A, scan_cfg: ScanConfig) -> None:
-    """Apply full scan configuration to the instrument."""
-    inst.reset()
-    inst.clear_status()
-    time.sleep(0.5)
-
-    for ch in scan_cfg.channels:
-        configure_channel(inst, ch)
-
-    inst.set_scan_list(scan_cfg.channel_numbers)
-    inst.set_scan_interval(scan_cfg.scan_interval)
-    inst.set_scan_count(scan_cfg.scan_count)
-    inst.enable_channel_in_readings()
-
-    logger.info(
-        "Scan configured: %d channels, interval=%.1fs, count=%s",
-        len(scan_cfg.channels),
-        scan_cfg.scan_interval,
-        "infinite" if scan_cfg.scan_count <= 0 else scan_cfg.scan_count,
-    )
 
 
 def parse_readings(
@@ -95,7 +25,7 @@ def parse_readings(
     if n_channels == 0:
         return readings
 
-    ch_by_num: dict[int, ChannelConfig] = {ch.channel: ch for ch in scan_cfg.channels}
+    ch_by_num = {ch.channel: ch for ch in scan_cfg.channels}
     now = datetime.now(timezone.utc)
 
     n_sweeps = len(raw) // n_channels
@@ -145,20 +75,26 @@ def parse_readings(
 
 
 def run_scan(
-    inst: HP34970A,
+    inst: InstrumentBase,
     scan_cfg: ScanConfig,
     influx: InfluxWriter,
     csv_writer: CsvWriter | None = None,
     poll_interval: float = 2.0,
     stop_event=None,
 ) -> None:
-    """Run the scan loop, fetching data and writing to InfluxDB and CSV."""
-    configure_scan(inst, scan_cfg)
-    inst.initiate_scan()
+    """Configure *inst*, then run the scan loop until stopped.
+
+    The loop calls :meth:`~InstrumentBase.fetch_sweep` every *poll_interval*
+    seconds.  Each instrument controls its own timing: hardware-timed devices
+    return ``None`` until their buffer holds a complete sweep; software-timed
+    devices (Fluke 45, RandomInstrument) enforce ``scan_interval`` internally
+    and measure on demand.
+    """
+    inst.configure(scan_cfg)
+    inst.start()
     logger.info("Scan running – press Ctrl-C to stop")
 
     sweep_count = 0
-    n_channels = len(scan_cfg.channels)
     total_readings = 0
 
     try:
@@ -169,24 +105,13 @@ def run_scan(
 
             time.sleep(poll_interval)
 
-            available = inst.get_data_count()
-            if available < n_channels:
+            sweep = inst.fetch_sweep()
+            if sweep is None:
                 continue
 
-            n_complete_sweeps = available // n_channels
-            if n_complete_sweeps > 1:
-                logger.warning(
-                    "Data loss: %d sweeps accumulated (expected 1); discarding all but the latest",
-                    n_complete_sweeps,
-                )
-            raw = inst.query_readings_with_channels(f"DATA:REM? {n_complete_sweeps * n_channels}")
-            if not raw:
-                continue
-            raw = raw[-n_channels:]
-
-            readings = parse_readings(raw, scan_cfg)
+            readings = parse_readings(sweep, scan_cfg)
             sweep_count += 1
-            total_readings += len(raw)
+            total_readings += len(sweep)
 
             for r in readings:
                 logger.info(
@@ -200,6 +125,7 @@ def run_scan(
                     csv_writer.write_readings(readings)
                 except Exception:
                     logger.exception("Failed to write to CSV log")
+
             logger.info(
                 "Sweep %d | %d new values (%d total readings)",
                 sweep_count, len(readings), total_readings,
@@ -213,7 +139,7 @@ def run_scan(
         logger.info("Ctrl-C caught in scan loop")
     finally:
         try:
-            inst.abort_scan()
+            inst.stop()
         except Exception:
             pass
         logger.info("Scan loop ended (total sweeps: %d)", sweep_count)

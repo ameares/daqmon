@@ -1,4 +1,5 @@
 {
+  "instrument_type": "hp34970a",
   "description": "Example scan: two-card setup demonstrating all channel configuration options",
   "scan_interval": 5.0,
   "scan_count": 0,
