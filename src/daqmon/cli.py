@@ -16,7 +16,7 @@ from .backup import download_config
 from .config import ScanConfig
 from .csv_writer import CsvWriter
 from .influx import InfluxWriter
-from .instruments import make_instrument as _make_instrument
+from .instruments import make_instrument as _make_instrument, registered_types
 from .instruments.base import InstrumentBase
 from .scanner import run_scan
 
@@ -121,12 +121,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     backup_p.add_argument(
         "--instrument", default="hp34970a",
+        choices=registered_types(),
         help="Instrument type. Default: %(default)s",
     )
 
-    identify_p = sub.add_parser("identify", help="Query instrument *IDN? and print it")
+    identify_p = sub.add_parser("identify", help="Query instrument identification string and print it")
     identify_p.add_argument(
         "--instrument", default="hp34970a",
+        choices=registered_types(),
         help="Instrument type. Default: %(default)s",
     )
 
@@ -144,7 +146,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_scan_p.add_argument(
         "--instrument", default="hp34970a",
-        help="Instrument type to scaffold (e.g. hp34970a, fluke45, random). Default: %(default)s",
+        choices=registered_types(),
+        help="Instrument type to scaffold. Default: %(default)s",
     )
     init_scan_p.add_argument(
         "--force",
@@ -238,8 +241,6 @@ def main(argv: list[str] | None = None) -> None:
         logger.debug("Overriding influxdb.bucket with CLI value: %s", args.bucket)
         app_cfg.setdefault("influxdb", {})["bucket"] = args.bucket
 
-    influx = make_influx(app_cfg)
-
     # Determine instrument type:
     # - scan/run: read from the scan config file (instrument_type field)
     # - identify/backup: read from --instrument CLI flag
@@ -280,6 +281,7 @@ def main(argv: list[str] | None = None) -> None:
             print(f"Configuration saved to {args.output}")
 
         elif args.command in ("scan", "run"):
+            influx = make_influx(app_cfg)
             influx.open()
 
             bucket = app_cfg.get("influxdb", {}).get("bucket", "daqmon")
@@ -297,6 +299,7 @@ def main(argv: list[str] | None = None) -> None:
                 )
             finally:
                 csv_writer.close()
+                influx.close()
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt – shutting down")
@@ -304,7 +307,6 @@ def main(argv: list[str] | None = None) -> None:
         logger.exception("Fatal error")
         sys.exit(1)
     finally:
-        influx.close()
         inst.close()
         logger.info("Shutdown complete")
 
