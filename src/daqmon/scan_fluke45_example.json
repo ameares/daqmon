@@ -1,6 +1,6 @@
 {
   "instrument_type": "fluke45",
-  "description": "Fluke 45 DC voltage monitor",
+  "description": "Fluke 45 DC voltage and frequency monitor",
   "scan_interval": 10.0,
   "scan_count": 0,
   "channels": [
@@ -13,6 +13,15 @@
       "gain": 1.0,
       "offset": 0.0,
       "extra": {"rate": "medium"}
+    },
+    {
+      "channel": 2,
+      "name": "output_frequency",
+      "function": "frequency",
+      "range": "auto",
+      "unit": "Hz",
+      "gain": 1.0,
+      "offset": 0.0
     }
   ]
 }
